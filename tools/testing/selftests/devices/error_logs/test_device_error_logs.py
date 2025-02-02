@@ -25,7 +25,7 @@ import ksft
 kmsg = "/dev/kmsg"
 
 RE_log = re.compile(
-    r"(?P<prefix>[0-9]+),(?P<sequence>[0-9]+),(?P<timestamp>[0-9]+),(?P<flag>[^;]*)(,[^;]*)*;(?P<message>.*)"
+    r"((?P<prefix>[0-9]+),){3}(?P<flag>([^;]|,)*);(?P<message>.*)"
 )
 RE_tag = re.compile(r" (?P<key>[^=]+)=(?P<value>.*)")
 
