@@ -21,20 +21,27 @@
 static void snd_seq_timer_set_tick_resolution(struct snd_seq_timer *tmr)
 {
 	unsigned int threshold =
-		tmr->tempo_base == 1000 ? 1000000 : 10000;
+		(tmr->tempo_base == 1000) ? 1000000 : 10000;
+	
+	unsigned int ppq = abs(tmr->ppq);
 
 	if (tmr->tempo < threshold)
-		tmr->tick.resolution = (tmr->tempo * tmr->tempo_base) / tmr->ppq;
+		tmr->tick.resolution = (tmr->tempo * tmr->tempo_base) / ppq;
 	else {
 		/* might overflow.. */
 		unsigned int s;
-		s = tmr->tempo % tmr->ppq;
-		s = (s * tmr->tempo_base) / tmr->ppq;
-		tmr->tick.resolution = (tmr->tempo / tmr->ppq) * tmr->tempo_base;
+		s = tmr->tempo % ppq;
+		s = (s * tmr->tempo_base) / ppq;
+		tmr->tick.resolution = (tmr->tempo / ppq) * tmr->tempo_base;
 		tmr->tick.resolution += s;
 	}
-	if (tmr->tick.resolution <= 0)
+
+	//if(tmr->tick.resolution <= 0) { //Unsigned values cannot be less than 0.
+	if (tmr->tick.resolution == 0) {
+		//Overflow on tmr->tick.resolution
 		tmr->tick.resolution = 1;
+	}
+	
 	snd_seq_timer_update_tick(&tmr->tick, 0);
 }
 
