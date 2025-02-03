@@ -215,7 +215,7 @@ int main(int argc, char ** argv)
 	if (fstat(fd, &sb))
 		die("Unable to stat `%s': %m", argv[2]);
 	if (_edata != sb.st_size)
-		die("Unexpected file size `%s': %u != %ld", argv[2], _edata,
+		die("Unexpected file size `%s': %lu != %ld", argv[2], _edata,
 		    sb.st_size);
 	sz = _edata - 4;
 	kernel = mmap(NULL, sz, PROT_READ, MAP_SHARED, fd, 0);
