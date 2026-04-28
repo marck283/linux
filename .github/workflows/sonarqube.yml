@@ -52,6 +52,11 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin' # Use 'temurin' or another supported distribution
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Versione LTS consigliata
 
       - name: Analyze with SonarQube
 
