@@ -41,6 +41,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. INDISPENSABILE: Scarica il codice nel runner
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Importante per l'analisi corretta della history di Sonar
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
