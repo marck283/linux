@@ -26,7 +26,8 @@ jobs:
         uses: SonarSource/sonarqube-scan-action/install-build-wrapper@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6.0.0
       - name: Run Build Wrapper
         run: |
-          build-wrapper-linux-x86-64 --out-dir $HOME/build "make -j$(nproc)"
+          make defconfig
+          build-wrapper-linux-x86-64 --out-dir $HOME/build make -j$(nproc)
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6.0.0
         env:
