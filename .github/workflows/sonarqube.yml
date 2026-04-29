@@ -35,8 +35,10 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_SCANNER_OPTS: -Xmx4096m -XX:+UseG1GC
         with:
           args: >
             -Dsonar.projectKey=marck283_linux
             -Dsonar.organization=marck283
             -Dsonar.cfamily.build-wrapper-output=build
+            -Dsonar.sources=arch
