@@ -36,4 +36,5 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=marck283_linux
+            -Dsonar.organization=marck283
             -Dsonar.cfamily.build-wrapper-output=$HOME/build
