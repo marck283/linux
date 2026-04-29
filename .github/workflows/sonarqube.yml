@@ -29,7 +29,7 @@ jobs:
       - name: Run Build Wrapper
         run: |
           make defconfig
-          build-wrapper-linux-x86-64 --out-dir $HOME/build make -j$(nproc)
+          build-wrapper-linux-x86-64 --out-dir build make -j$(nproc)
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6.0.0
         env:
@@ -39,4 +39,4 @@ jobs:
           args: >
             -Dsonar.projectKey=marck283_linux
             -Dsonar.organization=marck283
-            -Dsonar.cfamily.build-wrapper-output=$HOME/build
+            -Dsonar.cfamily.build-wrapper-output=build
