@@ -5,6 +5,8 @@ on:
       - master
   pull_request:
     types: [opened, synchronize, reopened]
+permissions:
+  contents: read
 jobs:
   build:
     name: Build and analyze
@@ -27,14 +29,16 @@ jobs:
       - name: Run Build Wrapper
         run: |
           make defconfig
-          build-wrapper-linux-x86-64 --out-dir $HOME/build make -j$(nproc)
+          build-wrapper-linux-x86-64 --out-dir build make -j$(nproc)
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_SCANNER_OPTS: -Xmx4096m -XX:+UseG1GC
         with:
           args: >
             -Dsonar.projectKey=marck283_linux
             -Dsonar.organization=marck283
-            -Dsonar.cfamily.build-wrapper-output=$HOME/build
+            -Dsonar.cfamily.build-wrapper-output=build
+            -Dsonar.sources=arch
