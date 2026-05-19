@@ -646,6 +646,7 @@ static int adm1266_probe(struct i2c_client *client)
 		return ret;
 
 	ret = adm1266_rtc_set(client, 0);
+	ret = adm1266_set_rtc(data);
 	if (ret < 0)
 		return ret;
 
