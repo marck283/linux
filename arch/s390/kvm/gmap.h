@@ -197,6 +197,36 @@ static inline bool pte_needs_unshadow(union pte oldpte, union pte newpte, union 
 	return !newpte.h.p || !newpte.s.pr;
 }
 
+/**
+ * pte_needs_unshadow() -- Check if the pte operations triggers unshadowing.
+ * @oldpte: the previous value for the guest pte.
+ * @newpte: the new pte being set.
+ * @pgste: the pgste for the pte entry.
+ *
+ * If the pgste.vsie_notif bit is not set, return false: the page is not
+ * involved in vsie and thus should not trigger an unshadow operation.
+ *
+ * If the pgste.vsie_gmem bit is set, this pte represents shadowed guest
+ * memory. The access rights on g3's memory should be synchronized with g1's
+ * and g2's. Therefore unshadowing is triggered if the new and old pte
+ * differ in protection, or if the new pte is invalid.
+ *
+ * If the pgste.vsie_gmem bit is not set, this pte maps the g2 dat tables
+ * for g3. If the entry becomes writable or absent, it becomes impossible to
+ * guarantee that the shadow mapping will match g2's mapping. In that case,
+ * trigger an unshadow event.
+ *
+ * Return: true if an unshadow event should be triggered, otherwise false.
+ */
+static inline bool pte_needs_unshadow(union pte oldpte, union pte newpte, union pgste pgste)
+{
+	if (!pgste.vsie_notif)
+		return false;
+	if (pgste.vsie_gmem)
+		return (oldpte.h.p != newpte.h.p) || newpte.h.i;
+	return !newpte.h.p || !newpte.s.pr;
+}
+
 static inline union pgste _gmap_ptep_xchg(struct gmap *gmap, union pte *ptep, union pte newpte,
 					  union pgste pgste, gfn_t gfn, bool needs_lock)
 {
@@ -273,7 +303,6 @@ static inline bool __must_check _gmap_crstep_xchg_atomic(struct gmap *gmap, unio
 		gmap_unmap_prefix(gmap, gfn, gfn + align);
 	}
 	if (crste_leaf(oldcrste) && crste_needs_unshadow(oldcrste, newcrste)) {
-		newcrste = oldcrste;
 		newcrste.s.fc1.vsie_notif = 0;
 		if (needs_lock)
 			gmap_handle_vsie_unshadow_event(gmap, gfn);
