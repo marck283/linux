@@ -74,11 +74,14 @@ static char * number(char * str, unsigned long long num, int base, int size, int
 			size--;
 	}
 	i = 0;
-	if (num == 0)
+	do {
+		tmp[i++] = digits[do_div(num, base)];
+	} while (num != 0);
+	/*if (num == 0)
 		tmp[i++]='0';
 	else while (num != 0) {
 		tmp[i++] = digits[do_div(num, base)];
-	}
+	}*/
 	if (i > precision)
 		precision = i;
 	size -= precision;
@@ -88,12 +91,26 @@ static char * number(char * str, unsigned long long num, int base, int size, int
 	if (sign)
 		*str++ = sign;
 	if (type & SPECIAL) {
-		if (base==8)
+		switch(base) {
+			case 8: {
+				*str++ = '0';
+				break;
+			}
+			case 16: {
+				*str++ = '0';
+				*str++ = digits[33];
+				break;
+			}
+			default: {
+				break;
+			};
+		}
+		/*if (base==8)
 			*str++ = '0';
 		else if (base == 16) {
 			*str++ = '0';
 			*str++ = digits[33];
-		}
+		}*/
 	}
 	if (!(type & LEFT))
 		while (size-- > 0)
@@ -141,7 +158,7 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 				case ' ': flags |= SPACE; goto repeat;
 				case '#': flags |= SPECIAL; goto repeat;
 				case '0': flags |= ZEROPAD; goto repeat;
-				}
+			}
 
 		/* get field width */
 		field_width = -1;

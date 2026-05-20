@@ -24,6 +24,12 @@
 #include <asm/perf_event.h>
 #include <asm/tlb.h>
 
+#ifdef CONFIG_SYSFS
+#include <linux/sysfs.h>	/* sysfs_emit()                 */
+#else
+#include <linux/sprintf.h>	/* scnprintf()                  */
+#endif
+
 #include "mm_internal.h"
 
 #ifdef CONFIG_PARAVIRT
@@ -1774,7 +1780,13 @@ static ssize_t tlbflush_read_file(struct file *file, char __user *user_buf,
 	char buf[32];
 	unsigned int len;
 
-	len = sprintf(buf, "%ld\n", tlb_single_page_flush_ceiling);
+	//len = sprintf(buf, "%ld\n", tlb_single_page_flush_ceiling);
+#ifdef CONFIG_SYSFS
+	len = sysfs_emit(buf, "%ld\n", tlb_single_page_flush_ceiling);
+#else
+	len = scnprintf(buf, PAGE_SIZE, "%ld\n", tlb_single_page_flush_ceiling);
+#endif
+
 	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
 }
 

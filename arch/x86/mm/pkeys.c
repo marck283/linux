@@ -11,6 +11,12 @@
 #include <asm/cpufeature.h>             /* boot_cpu_has, ...            */
 #include <asm/mmu_context.h>            /* vma_pkey()                   */
 
+#ifdef CONFIG_SYSFS
+#include <linux/sysfs.h>				/* sysfs_emit()                 */
+#else
+#include <linux/sprintf.h>				/* scnprintf()                  */
+#endif
+
 int __execute_only_pkey(struct mm_struct *mm)
 {
 	bool need_to_set_mm_pkey = false;
@@ -132,7 +138,12 @@ static ssize_t init_pkru_read_file(struct file *file, char __user *user_buf,
 	char buf[32];
 	unsigned int len;
 
-	len = sprintf(buf, "0x%x\n", init_pkru_value);
+	//len = sprintf(buf, "0x%x\n", init_pkru_value);
+#ifdef CONFIG_SYSFS
+	len = sysfs_emit(buf, "0x%x\n", init_pkru_value);
+#else
+	len = scnprintf(buf, PAGE_SIZE, "0x%x\n", init_pkru_value);
+#endif
 	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
 }
 
