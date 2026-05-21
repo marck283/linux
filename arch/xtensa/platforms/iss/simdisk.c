@@ -226,6 +226,15 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
     return len;
 }
 
+inline void chown_and_set_size(struct simdisk *dev, const int new_fd, 
+	const char *new_filename, const int new_size)
+{
+	dev->fd = new_fd;
+	dev->filename = new_filename;
+	dev->size = new_size;
+	set_capacity(dev->gd, dev->size >> SECTOR_SHIFT); // 0 >> SECTOR_SHIFT == 0, so this is safe even if new_size == 0
+}
+
 static int simdisk_reattach(struct simdisk *dev, const char *filename)
 {
 	int err = 0;
@@ -266,19 +275,14 @@ static int simdisk_reattach(struct simdisk *dev, const char *filename)
 	old_filename = dev->filename;
 
 	if (new_fd != -1) {
-		dev->fd = new_fd;
-		dev->filename = new_filename; /* ownership transferred */
-		dev->size = new_size;
-		set_capacity(dev->gd, dev->size >> SECTOR_SHIFT);
+		/* Ownership transfer requested */
+		chown_and_set_size(dev, new_fd, new_filename, new_size);
 		pr_info("SIMDISK: %s=%s\n", dev->gd->disk_name, dev->filename);
 		/* avoid double-free of new_filename */
 		new_filename = NULL;
 	} else {
 		/* Detach requested */
-		dev->fd = -1;
-		dev->filename = NULL;
-		dev->size = 0;
-		set_capacity(dev->gd, 0);
+		chown_and_set_size(dev, -1, NULL, 0);
 	}
 
 	spin_unlock(&dev->lock);
