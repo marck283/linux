@@ -206,57 +206,122 @@ static int simdisk_detach(struct simdisk *dev)
 	return err;
 }
 
+// Assumes that size <= PAGE_SIZE.
 static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
-			size_t size, loff_t *ppos)
+                                 size_t size, loff_t *ppos)
 {
-	struct simdisk *dev = pde_data(file_inode(file));
-	const char *s = dev->filename;
-	if (s) {
-		ssize_t len = strlen(s);
-		char *temp = kmalloc(len + 2, GFP_KERNEL);
+    struct simdisk *dev = pde_data(file_inode(file));
+	char temp[PAGE_SIZE];
+    ssize_t len;
 
-		if (!temp)
+    spin_lock(&dev->lock);
+    if (!dev->filename) {
+        spin_unlock(&dev->lock);
+        return simple_read_from_buffer(buf, size, ppos, "\n", 1);
+    }
+	len = scnprintf(temp, sizeof(temp), "%s\n", dev->filename);
+    spin_unlock(&dev->lock);
+
+	len = simple_read_from_buffer(buf, size, ppos, temp, len);
+    return len;
+}
+
+static int simdisk_reattach(struct simdisk *dev, const char *filename)
+{
+	int err = 0;
+	char *new_filename = NULL;
+	int new_fd = -1;
+	unsigned long new_size = 0;
+	int old_fd = -1;
+	const char *old_filename = NULL;
+
+	if (filename[0]) {
+		new_filename = kstrdup(filename, GFP_KERNEL);
+		if (!new_filename)
 			return -ENOMEM;
 
-		len = scnprintf(temp, len + 2, "%s\n", s);
-		len = simple_read_from_buffer(buf, size, ppos,
-					      temp, len);
-
-		kfree(temp);
-		return len;
+		new_fd = simc_open(new_filename, O_RDWR, 0);
+		if (new_fd == -1) {
+			pr_err("SIMDISK: Can't open %s: %d\n", new_filename, errno);
+			kfree(new_filename);
+			return -ENODEV;
+		}
+		new_size = simc_lseek(new_fd, 0, SEEK_END);
 	}
-	return simple_read_from_buffer(buf, size, ppos, "\n", 1);
+
+	spin_lock(&dev->lock);
+
+	if (dev->users != 0) {
+		err = -EBUSY;
+		spin_unlock(&dev->lock);
+		if (new_fd != -1) {
+			simc_close(new_fd);
+			kfree(new_filename);
+		}
+		return err;
+	}
+
+	/* Snapshot old state and swap to new state under the lock */
+	old_fd = dev->fd;
+	old_filename = dev->filename;
+
+	if (new_fd != -1) {
+		dev->fd = new_fd;
+		dev->filename = new_filename; /* ownership transferred */
+		dev->size = new_size;
+		set_capacity(dev->gd, dev->size >> SECTOR_SHIFT);
+		pr_info("SIMDISK: %s=%s\n", dev->gd->disk_name, dev->filename);
+		/* avoid double-free of new_filename */
+		new_filename = NULL;
+	} else {
+		/* Detach requested */
+		dev->fd = -1;
+		dev->filename = NULL;
+		dev->size = 0;
+		set_capacity(dev->gd, 0);
+	}
+
+	spin_unlock(&dev->lock);
+
+	/* Close and free the old resources outside the lock */
+	if (old_fd != -1) {
+		if (simc_close(old_fd))
+			pr_err("SIMDISK: error closing %s: %d\n", old_filename, errno);
+		else
+			pr_info("SIMDISK: %s detached from %s\n", dev->gd->disk_name, old_filename);
+		kfree(old_filename);
+	}
+
+	/* If we still own new_filename (on error paths), free it */
+	kfree(new_filename);
+
+	return err;
 }
 
 static ssize_t proc_write_simdisk(struct file *file, const char __user *buf,
-			size_t count, loff_t *ppos)
+                                  size_t count, loff_t *ppos)
 {
-	char *tmp;
-	struct simdisk *dev = pde_data(file_inode(file));
-	int err;
+    char *tmp;
+    struct simdisk *dev = pde_data(file_inode(file));
+    int err;
 
-	if (count == 0 || count > PAGE_SIZE)
-		return -EINVAL;
+    if (count == 0 || count > PAGE_SIZE)
+        return -EINVAL;
 
-	tmp = memdup_user_nul(buf, count);
-	if (IS_ERR(tmp))
-		return PTR_ERR(tmp);
+    tmp = memdup_user_nul(buf, count);
+    if (IS_ERR(tmp))
+        return PTR_ERR(tmp);
 
-	err = simdisk_detach(dev);
-	if (err != 0)
-		goto out_free;
+    if (count > 0 && tmp[count - 1] == '\n')
+        tmp[count - 1] = 0;
 
-	if (count > 0 && tmp[count - 1] == '\n')
-		tmp[count - 1] = 0;
+    err = simdisk_reattach(dev, tmp);
 
-	if (tmp[0])
-		err = simdisk_attach(dev, tmp);
+    if (err == 0)
+        err = count;
 
-	if (err == 0)
-		err = count;
-out_free:
-	kfree(tmp);
-	return err;
+    kfree(tmp);
+    return err;
 }
 
 static const struct proc_ops simdisk_proc_ops = {
