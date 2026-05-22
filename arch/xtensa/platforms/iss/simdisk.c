@@ -227,7 +227,7 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
 }
 
 inline void chown_and_set_size(struct simdisk *dev, const int new_fd, 
-	const char *new_filename, const int new_size)
+	const char *new_filename, const unsigned long new_size)
 {
 	dev->fd = new_fd;
 	dev->filename = new_filename;
