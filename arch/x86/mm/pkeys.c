@@ -138,12 +138,7 @@ static ssize_t init_pkru_read_file(struct file *file, char __user *user_buf,
 	char buf[32];
 	unsigned int len;
 
-	//len = sprintf(buf, "0x%x\n", init_pkru_value);
-#ifdef CONFIG_SYSFS
-	len = sysfs_emit(buf, "0x%x\n", init_pkru_value);
-#else
-	len = scnprintf(buf, PAGE_SIZE, "0x%x\n", init_pkru_value);
-#endif
+	len = scnprintf(buf, sizeof(buf), "0x%x\n", init_pkru_value);
 	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
 }
 

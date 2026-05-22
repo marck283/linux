@@ -1780,12 +1780,7 @@ static ssize_t tlbflush_read_file(struct file *file, char __user *user_buf,
 	char buf[32];
 	unsigned int len;
 
-	//len = sprintf(buf, "%ld\n", tlb_single_page_flush_ceiling);
-#ifdef CONFIG_SYSFS
-	len = sysfs_emit(buf, "%ld\n", tlb_single_page_flush_ceiling);
-#else
-	len = scnprintf(buf, PAGE_SIZE, "%ld\n", tlb_single_page_flush_ceiling);
-#endif
+	len = scnprintf(buf, sizeof(buf), "%ld\n", tlb_single_page_flush_ceiling);
 
 	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
 }

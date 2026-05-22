@@ -77,11 +77,6 @@ static char * number(char * str, unsigned long long num, int base, int size, int
 	do {
 		tmp[i++] = digits[do_div(num, base)];
 	} while (num != 0);
-	/*if (num == 0)
-		tmp[i++]='0';
-	else while (num != 0) {
-		tmp[i++] = digits[do_div(num, base)];
-	}*/
 	if (i > precision)
 		precision = i;
 	size -= precision;
@@ -103,14 +98,8 @@ static char * number(char * str, unsigned long long num, int base, int size, int
 			}
 			default: {
 				break;
-			};
+			}
 		}
-		/*if (base==8)
-			*str++ = '0';
-		else if (base == 16) {
-			*str++ = '0';
-			*str++ = digits[33];
-		}*/
 	}
 	if (!(type & LEFT))
 		while (size-- > 0)

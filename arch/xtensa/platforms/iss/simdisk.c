@@ -206,23 +206,28 @@ static int simdisk_detach(struct simdisk *dev)
 	return err;
 }
 
-// Assumes that size <= PAGE_SIZE.
 static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
                                  size_t size, loff_t *ppos)
 {
     struct simdisk *dev = pde_data(file_inode(file));
-	char temp[PAGE_SIZE];
+	char *temp;
     ssize_t len;
+
+	temp = kmalloc(256, GFP_KERNEL);
+	if (!temp)
+		return -ENOMEM;
 
     spin_lock(&dev->lock);
     if (!dev->filename) {
         spin_unlock(&dev->lock);
+        kfree(temp);
         return simple_read_from_buffer(buf, size, ppos, "\n", 1);
     }
-	len = scnprintf(temp, sizeof(temp), "%s\n", dev->filename);
+	len = scnprintf(temp, 256, "%s\n", dev->filename);
     spin_unlock(&dev->lock);
 
 	len = simple_read_from_buffer(buf, size, ppos, temp, len);
+	kfree(temp);
     return len;
 }
 
@@ -256,6 +261,12 @@ static int simdisk_reattach(struct simdisk *dev, const char *filename)
 			return -ENODEV;
 		}
 		new_size = simc_lseek(new_fd, 0, SEEK_END);
+		if (new_size == -1) {
+			pr_err("SIMDISK: Can't seek to end of %s: %d\n", new_filename, errno);
+			simc_close(new_fd);
+			kfree(new_filename);
+			return -ENODEV;
+		}
 	}
 
 	spin_lock(&dev->lock);
@@ -289,10 +300,12 @@ static int simdisk_reattach(struct simdisk *dev, const char *filename)
 
 	/* Close and free the old resources outside the lock */
 	if (old_fd != -1) {
-		if (simc_close(old_fd))
+		if (simc_close(old_fd)) {
 			pr_err("SIMDISK: error closing %s: %d\n", old_filename, errno);
-		else
+			err = -EIO;
+		} else {
 			pr_info("SIMDISK: %s detached from %s\n", dev->gd->disk_name, old_filename);
+		}
 		kfree(old_filename);
 	}
 
