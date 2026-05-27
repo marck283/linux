@@ -248,6 +248,7 @@ static int simdisk_reattach(struct simdisk *dev, const char *filename)
 	unsigned long new_size = 0;
 	int old_fd = -1;
 	const char *old_filename = NULL;
+	unsigned long old_size = 0;
 
 	if (filename[0]) {
 		new_filename = kstrdup(filename, GFP_KERNEL);
@@ -284,13 +285,12 @@ static int simdisk_reattach(struct simdisk *dev, const char *filename)
 	/* Snapshot old state and swap to new state under the lock */
 	old_fd = dev->fd;
 	old_filename = dev->filename;
+	old_size = dev->size;
 
 	if (new_fd != -1) {
 		/* Ownership transfer requested */
 		chown_and_set_size(dev, new_fd, new_filename, new_size);
 		pr_info("SIMDISK: %s=%s\n", dev->gd->disk_name, dev->filename);
-		/* avoid double-free of new_filename */
-		new_filename = NULL;
 	} else {
 		/* Detach requested */
 		chown_and_set_size(dev, -1, NULL, 0);
@@ -303,14 +303,23 @@ static int simdisk_reattach(struct simdisk *dev, const char *filename)
 		if (simc_close(old_fd)) {
 			pr_err("SIMDISK: error closing %s: %d\n", old_filename, errno);
 			err = -EIO;
+
+			spin_lock(&dev->lock);
+			chown_and_set_size(dev, old_fd, old_filename, old_size);
+			spin_unlock(&dev->lock);
+
+			if (new_fd != -1) {
+				if (simc_close(new_fd))
+					pr_err("SIMDISK: error closing %s after rollback: %d\n",
+						new_filename, errno);
+				else
+					kfree(new_filename);
+			}
 		} else {
 			pr_info("SIMDISK: %s detached from %s\n", dev->gd->disk_name, old_filename);
+			kfree(old_filename);
 		}
-		kfree(old_filename);
 	}
-
-	/* If we still own new_filename (on error paths), free it */
-	kfree(new_filename);
 
 	return err;
 }
