@@ -134,7 +134,7 @@ static int get_ucode_type(struct device *dev,
 	for (i = 0; i < strlen(tmp_ver_str); i++)
 		tmp_ver_str[i] = tolower(tmp_ver_str[i]);
 
-	sprintf(ver_str_prefix, "ocpt-%02d", rid);
+	snprintf(ver_str_prefix, sizeof(ver_str_prefix), "ocpt-%02d", rid);
 	if (!strnstr(tmp_ver_str, ver_str_prefix, OTX2_CPT_UCODE_VER_STR_SZ))
 		return -EINVAL;
 
