@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       
-      # Aggiungi le dipendenze necessarie per il kernel
+      # Add the dependencies required to build the kernel
       - name: Install dependencies
         run: |
           sudo apt-get update
