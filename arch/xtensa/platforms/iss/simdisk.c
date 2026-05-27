@@ -231,13 +231,13 @@ static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
     return len;
 }
 
-inline void chown_and_set_size(struct simdisk *dev, const int new_fd, 
+static void chown_and_set_size(struct simdisk *dev, const int new_fd, 
 	const char *new_filename, const unsigned long new_size)
 {
 	dev->fd = new_fd;
 	dev->filename = new_filename;
 	dev->size = new_size;
-	set_capacity(dev->gd, dev->size >> SECTOR_SHIFT); // 0 >> SECTOR_SHIFT == 0, so this is safe even if new_size == 0
+	set_capacity(dev->gd, dev->size >> SECTOR_SHIFT); /* 0 >> SECTOR_SHIFT == 0, so this is safe even if new_size == 0 */
 }
 
 static int simdisk_reattach(struct simdisk *dev, const char *filename)
