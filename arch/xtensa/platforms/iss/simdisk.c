@@ -207,28 +207,30 @@ static int simdisk_detach(struct simdisk *dev)
 }
 
 static ssize_t proc_read_simdisk(struct file *file, char __user *buf,
-                                 size_t size, loff_t *ppos)
+			size_t size, loff_t *ppos)
 {
-    struct simdisk *dev = pde_data(file_inode(file));
+	struct simdisk *dev = pde_data(file_inode(file));
 	char *temp;
-    ssize_t len;
+	size_t len;
+	ssize_t ret;
 
-	temp = kmalloc(256, GFP_KERNEL);
-	if (!temp)
+	spin_lock(&dev->lock);
+	if (!dev->filename) {
+		spin_unlock(&dev->lock);
+		return simple_read_from_buffer(buf, size, ppos, "\n", 1);
+	}
+	len = strlen(dev->filename) + 2;
+	temp = kmalloc(len, GFP_ATOMIC);
+	if (!temp) {
+		spin_unlock(&dev->lock);
 		return -ENOMEM;
+	}
+	len = scnprintf(temp, len, "%s\n", dev->filename);
+	spin_unlock(&dev->lock);
 
-    spin_lock(&dev->lock);
-    if (!dev->filename) {
-        spin_unlock(&dev->lock);
-        kfree(temp);
-        return simple_read_from_buffer(buf, size, ppos, "\n", 1);
-    }
-	len = scnprintf(temp, 256, "%s\n", dev->filename);
-    spin_unlock(&dev->lock);
-
-	len = simple_read_from_buffer(buf, size, ppos, temp, len);
+	ret = simple_read_from_buffer(buf, size, ppos, temp, len);
 	kfree(temp);
-    return len;
+	return ret;
 }
 
 static void chown_and_set_size(struct simdisk *dev, const int new_fd, 
